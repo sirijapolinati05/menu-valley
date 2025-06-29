@@ -4,54 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Search } from 'lucide-react';
-
-interface FoodItem {
-  id: string;
-  name: string;
-  image?: string;
-  category: string;
-  description: string;
-}
+import { useFoodContext } from '@/contexts/FoodContext';
 
 const StudentFoodMenu = () => {
-  const [foodItems] = useState<FoodItem[]>([
-    { 
-      id: '1', 
-      name: 'Dosa', 
-      category: 'Breakfast', 
-      image: '/placeholder.svg',
-      description: 'Crispy South Indian pancake served with coconut chutney and sambar'
-    },
-    { 
-      id: '2', 
-      name: 'Rice', 
-      category: 'Lunch', 
-      image: '/placeholder.svg',
-      description: 'Steamed basmati rice, perfect with curries and dal'
-    },
-    { 
-      id: '3', 
-      name: 'Sambar', 
-      category: 'Lunch', 
-      image: '/placeholder.svg',
-      description: 'Traditional South Indian lentil curry with vegetables'
-    },
-    { 
-      id: '4', 
-      name: 'Chapati', 
-      category: 'Dinner', 
-      image: '/placeholder.svg',
-      description: 'Soft whole wheat flatbread, freshly made'
-    },
-    { 
-      id: '5', 
-      name: 'Tea', 
-      category: 'Snacks', 
-      image: '/placeholder.svg',
-      description: 'Hot Indian spiced tea with milk and sugar'
-    },
-  ]);
-  
+  const { foodItems } = useFoodContext();
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredItems = foodItems.filter(item =>
@@ -107,7 +63,7 @@ const StudentFoodMenu = () => {
                   </Badge>
                 </div>
                 <CardDescription className="text-gray-600">
-                  {item.description}
+                  {item.description || `Delicious ${item.name} from our kitchen`}
                 </CardDescription>
               </div>
             </CardHeader>

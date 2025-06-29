@@ -5,26 +5,26 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search } from 'lucide-react';
-
-interface FoodItem {
-  id: string;
-  name: string;
-  image?: string;
-  category: string;
-}
+import { Textarea } from '@/components/ui/textarea';
+import { Search, Edit } from 'lucide-react';
+import { useFoodContext } from '@/contexts/FoodContext';
 
 const FoodMenu = () => {
-  const [foodItems, setFoodItems] = useState<FoodItem[]>([
-    { id: '1', name: 'Dosa', category: 'Breakfast', image: '/placeholder.svg' },
-    { id: '2', name: 'Rice', category: 'Lunch', image: '/placeholder.svg' },
-    { id: '3', name: 'Sambar', category: 'Lunch', image: '/placeholder.svg' },
-    { id: '4', name: 'Chapati', category: 'Dinner', image: '/placeholder.svg' },
-  ]);
+  const { foodItems, addFoodItem, updateFoodItem } = useFoodContext();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  
+  // Form states for add dialog
   const [newFoodName, setNewFoodName] = useState('');
   const [newFoodCategory, setNewFoodCategory] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newFoodDescription, setNewFoodDescription] = useState('');
+  
+  // Form states for edit dialog
+  const [editFoodName, setEditFoodName] = useState('');
+  const [editFoodCategory, setEditFoodCategory] = useState('');
+  const [editFoodDescription, setEditFoodDescription] = useState('');
 
   const filteredItems = foodItems.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -32,16 +32,39 @@ const FoodMenu = () => {
 
   const handleAddFood = () => {
     if (newFoodName && newFoodCategory) {
-      const newItem: FoodItem = {
-        id: Date.now().toString(),
+      addFoodItem({
         name: newFoodName,
         category: newFoodCategory,
+        description: newFoodDescription,
         image: '/placeholder.svg'
-      };
-      setFoodItems([...foodItems, newItem]);
+      });
       setNewFoodName('');
       setNewFoodCategory('');
-      setIsDialogOpen(false);
+      setNewFoodDescription('');
+      setIsAddDialogOpen(false);
+    }
+  };
+
+  const handleEditClick = (item: any) => {
+    setEditingItem(item);
+    setEditFoodName(item.name);
+    setEditFoodCategory(item.category);
+    setEditFoodDescription(item.description || '');
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateFood = () => {
+    if (editingItem && editFoodName && editFoodCategory) {
+      updateFoodItem(editingItem.id, {
+        name: editFoodName,
+        category: editFoodCategory,
+        description: editFoodDescription
+      });
+      setIsEditDialogOpen(false);
+      setEditingItem(null);
+      setEditFoodName('');
+      setEditFoodCategory('');
+      setEditFoodDescription('');
     }
   };
 
@@ -49,7 +72,7 @@ const FoodMenu = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold text-orange-700">Food Menu Management</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-orange-500 hover:bg-orange-600">Add New Food Item</Button>
           </DialogTrigger>
@@ -57,7 +80,7 @@ const FoodMenu = () => {
             <DialogHeader>
               <DialogTitle>Add New Food Item</DialogTitle>
               <DialogDescription>
-                Add a new food item to the menu with category and image.
+                Add a new food item to the menu with category and description.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -77,6 +100,15 @@ const FoodMenu = () => {
                   value={newFoodCategory}
                   onChange={(e) => setNewFoodCategory(e.target.value)}
                   placeholder="Breakfast, Lunch, Snacks, Dinner"
+                />
+              </div>
+              <div>
+                <Label htmlFor="food-description">Description</Label>
+                <Textarea
+                  id="food-description"
+                  value={newFoodDescription}
+                  onChange={(e) => setNewFoodDescription(e.target.value)}
+                  placeholder="Enter food description"
                 />
               </div>
               <div>
@@ -120,15 +152,69 @@ const FoodMenu = () => {
               <CardDescription className="text-sm text-orange-600">
                 {item.category}
               </CardDescription>
+              {item.description && (
+                <CardDescription className="text-xs text-gray-600 mt-1">
+                  {item.description}
+                </CardDescription>
+              )}
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full">
+              <Button 
+                variant="outline" 
+                className="w-full flex items-center gap-2"
+                onClick={() => handleEditClick(item)}
+              >
+                <Edit className="h-4 w-4" />
                 Edit Item
               </Button>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Food Item</DialogTitle>
+            <DialogDescription>
+              Update the food item details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-food-name">Food Name</Label>
+              <Input
+                id="edit-food-name"
+                value={editFoodName}
+                onChange={(e) => setEditFoodName(e.target.value)}
+                placeholder="Enter food name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-food-category">Category</Label>
+              <Input
+                id="edit-food-category"
+                value={editFoodCategory}
+                onChange={(e) => setEditFoodCategory(e.target.value)}
+                placeholder="Breakfast, Lunch, Snacks, Dinner"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-food-description">Description</Label>
+              <Textarea
+                id="edit-food-description"
+                value={editFoodDescription}
+                onChange={(e) => setEditFoodDescription(e.target.value)}
+                placeholder="Enter food description"
+              />
+            </div>
+            <Button onClick={handleUpdateFood} className="w-full">
+              Update Food Item
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
