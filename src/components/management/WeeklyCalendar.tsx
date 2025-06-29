@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -23,6 +23,14 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingDay, setEditingDay] = useState<string>('');
   const [weeklyMenus, setWeeklyMenus] = useState<Record<string, DayMenu>>({});
+
+  // Load weekly menus from localStorage on component mount
+  useEffect(() => {
+    const savedMenus = localStorage.getItem('weekly_menus');
+    if (savedMenus) {
+      setWeeklyMenus(JSON.parse(savedMenus));
+    }
+  }, []);
 
   // Separate food items by category
   const breakfastItems = foodItems.filter(item => item.category.toLowerCase() === 'breakfast');
@@ -69,16 +77,12 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
   };
 
   const handleSaveMenu = () => {
-    setWeeklyMenus(prev => ({
-      ...prev,
-      [editingDay]: editMenu
-    }));
-    
-    // Save to localStorage for sharing with student portal
     const updatedMenus = {
       ...weeklyMenus,
       [editingDay]: editMenu
     };
+    
+    setWeeklyMenus(updatedMenus);
     localStorage.setItem('weekly_menus', JSON.stringify(updatedMenus));
     
     setIsEditDialogOpen(false);
@@ -107,7 +111,7 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
+      <div className="space-y-4">
         {weekDates.map((date, index) => {
           const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
           const isToday = date.toDateString() === new Date().toDateString();
@@ -116,51 +120,55 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
           return (
             <Card key={index} className={`${isToday ? 'ring-2 ring-orange-500' : ''}`}>
               <CardHeader className="pb-3">
-                <CardTitle className={`text-lg ${isToday ? 'text-orange-700' : ''}`}>
-                  {dayName}
-                </CardTitle>
-                <CardDescription>
-                  {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  {isToday && <span className="ml-2 text-orange-600 font-medium">(Today)</span>}
-                </CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle className={`text-xl ${isToday ? 'text-orange-700' : ''}`}>
+                      {dayName}
+                    </CardTitle>
+                    <CardDescription>
+                      {date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      {isToday && <span className="ml-2 text-orange-600 font-medium">(Today)</span>}
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleEditMenu(date)}
+                  >
+                    Edit Menu
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm text-gray-700">Breakfast</h4>
-                  <div className="text-sm text-gray-600 bg-yellow-50 p-2 rounded">
-                    {dayMenu.breakfast}
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm text-gray-700">Breakfast</h4>
+                    <div className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg">
+                      {dayMenu.breakfast}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm text-gray-700">Lunch</h4>
+                    <div className="text-sm text-gray-600 bg-green-50 p-3 rounded-lg">
+                      {dayMenu.lunch}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm text-gray-700">Snacks</h4>
+                    <div className="text-sm text-gray-600 bg-purple-50 p-3 rounded-lg">
+                      {dayMenu.snacks}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm text-gray-700">Dinner</h4>
+                    <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                      {dayMenu.dinner}
+                    </div>
                   </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm text-gray-700">Lunch</h4>
-                  <div className="text-sm text-gray-600 bg-green-50 p-2 rounded">
-                    {dayMenu.lunch}
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm text-gray-700">Snacks</h4>
-                  <div className="text-sm text-gray-600 bg-purple-50 p-2 rounded">
-                    {dayMenu.snacks}
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm text-gray-700">Dinner</h4>
-                  <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded">
-                    {dayMenu.dinner}
-                  </div>
-                </div>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full mt-3"
-                  onClick={() => handleEditMenu(date)}
-                >
-                  Edit Menu
-                </Button>
               </CardContent>
             </Card>
           );

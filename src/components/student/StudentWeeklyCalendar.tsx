@@ -76,7 +76,7 @@ const StudentWeeklyCalendar = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
+      <div className="space-y-4">
         {weekDates.map((date, index) => {
           const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
           const dateKey = date.toDateString();
@@ -91,66 +91,71 @@ const StudentWeeklyCalendar = () => {
               className={`${isToday ? 'ring-2 ring-green-500' : ''} ${isPast ? 'opacity-60' : ''}`}
             >
               <CardHeader className="pb-3">
-                <CardTitle className={`text-lg ${isToday ? 'text-green-700' : ''}`}>
-                  {dayName}
-                </CardTitle>
-                <CardDescription>
-                  {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  {isToday && <span className="ml-2 text-green-600 font-medium">(Today)</span>}
-                  {isPast && <span className="ml-2 text-gray-500">(Past)</span>}
-                </CardDescription>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle className={`text-xl ${isToday ? 'text-green-700' : ''}`}>
+                      {dayName}
+                    </CardTitle>
+                    <CardDescription>
+                      {date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      {isToday && <span className="ml-2 text-green-600 font-medium">(Today)</span>}
+                      {isPast && <span className="ml-2 text-gray-500">(Past)</span>}
+                    </CardDescription>
+                  </div>
+                  <div>
+                    {hasVoted ? (
+                      <Badge className="bg-green-100 text-green-800">
+                        ✓ Voted
+                      </Badge>
+                    ) : isPast ? (
+                      <Badge className="bg-gray-100 text-gray-500">
+                        Past Day
+                      </Badge>
+                    ) : isToday ? (
+                      <Badge className="bg-blue-100 text-blue-800">
+                        Vote in Today's Menu
+                      </Badge>
+                    ) : (
+                      <Button 
+                        size="sm" 
+                        className="bg-green-600 hover:bg-green-700"
+                        onClick={() => handleVoteForDay(dateKey)}
+                      >
+                        Vote for Interest
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm text-gray-700">Breakfast</h4>
-                  <div className="text-sm text-gray-600 bg-yellow-50 p-2 rounded">
-                    {dayMenu.breakfast}
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm text-gray-700">Breakfast</h4>
+                    <div className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg">
+                      {dayMenu.breakfast}
+                    </div>
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm text-gray-700">Lunch</h4>
-                  <div className="text-sm text-gray-600 bg-green-50 p-2 rounded">
-                    {dayMenu.lunch}
+                  
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm text-gray-700">Lunch</h4>
+                    <div className="text-sm text-gray-600 bg-green-50 p-3 rounded-lg">
+                      {dayMenu.lunch}
+                    </div>
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm text-gray-700">Snacks</h4>
-                  <div className="text-sm text-gray-600 bg-purple-50 p-2 rounded">
-                    {dayMenu.snacks}
+                  
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm text-gray-700">Snacks</h4>
+                    <div className="text-sm text-gray-600 bg-purple-50 p-3 rounded-lg">
+                      {dayMenu.snacks}
+                    </div>
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm text-gray-700">Dinner</h4>
-                  <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded">
-                    {dayMenu.dinner}
+                  
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm text-gray-700">Dinner</h4>
+                    <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                      {dayMenu.dinner}
+                    </div>
                   </div>
-                </div>
-                
-                <div className="pt-2">
-                  {hasVoted ? (
-                    <Badge className="w-full bg-green-100 text-green-800 justify-center">
-                      ✓ Voted
-                    </Badge>
-                  ) : isPast ? (
-                    <Badge className="w-full bg-gray-100 text-gray-500 justify-center">
-                      Past Day
-                    </Badge>
-                  ) : isToday ? (
-                    <Badge className="w-full bg-blue-100 text-blue-800 justify-center">
-                      Vote in Today's Menu
-                    </Badge>
-                  ) : (
-                    <Button 
-                      size="sm" 
-                      className="w-full bg-green-600 hover:bg-green-700"
-                      onClick={() => handleVoteForDay(dateKey)}
-                    >
-                      Vote for Interest
-                    </Button>
-                  )}
                 </div>
               </CardContent>
             </Card>
