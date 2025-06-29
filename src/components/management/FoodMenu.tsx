@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Edit } from 'lucide-react';
+import { Search, Edit, Upload } from 'lucide-react';
 import { useFoodContext } from '@/contexts/FoodContext';
 
 const FoodMenu = () => {
@@ -25,10 +25,24 @@ const FoodMenu = () => {
   const [editFoodName, setEditFoodName] = useState('');
   const [editFoodCategory, setEditFoodCategory] = useState('');
   const [editFoodDescription, setEditFoodDescription] = useState('');
+  const [editFoodImage, setEditFoodImage] = useState('');
 
   const filteredItems = foodItems.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, isEdit: boolean = false) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (isEdit) {
+          setEditFoodImage(e.target?.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleAddFood = () => {
     if (newFoodName && newFoodCategory) {
@@ -50,6 +64,7 @@ const FoodMenu = () => {
     setEditFoodName(item.name);
     setEditFoodCategory(item.category);
     setEditFoodDescription(item.description || '');
+    setEditFoodImage(item.image || '/placeholder.svg');
     setIsEditDialogOpen(true);
   };
 
@@ -58,13 +73,15 @@ const FoodMenu = () => {
       updateFoodItem(editingItem.id, {
         name: editFoodName,
         category: editFoodCategory,
-        description: editFoodDescription
+        description: editFoodDescription,
+        image: editFoodImage || '/placeholder.svg'
       });
       setIsEditDialogOpen(false);
       setEditingItem(null);
       setEditFoodName('');
       setEditFoodCategory('');
       setEditFoodDescription('');
+      setEditFoodImage('');
     }
   };
 
@@ -174,11 +191,11 @@ const FoodMenu = () => {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Food Item</DialogTitle>
             <DialogDescription>
-              Update the food item details.
+              Update the food item details including image.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -209,6 +226,36 @@ const FoodMenu = () => {
                 placeholder="Enter food description"
               />
             </div>
+            
+            {/* Current Image Preview */}
+            {editFoodImage && (
+              <div>
+                <Label>Current Image</Label>
+                <div className="mt-2">
+                  <img
+                    src={editFoodImage}
+                    alt="Current food image"
+                    className="w-full h-32 object-cover rounded-lg border"
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* Image Upload */}
+            <div>
+              <Label htmlFor="edit-food-image">Upload New Image</Label>
+              <div className="flex items-center gap-2 mt-2">
+                <Input
+                  id="edit-food-image"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleImageUpload(e, true)}
+                  className="flex-1"
+                />
+                <Upload className="h-4 w-4 text-gray-400" />
+              </div>
+            </div>
+            
             <Button onClick={handleUpdateFood} className="w-full">
               Update Food Item
             </Button>
