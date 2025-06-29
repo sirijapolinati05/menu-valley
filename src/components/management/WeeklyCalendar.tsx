@@ -2,12 +2,40 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Calendar } from 'lucide-react';
+import { useFoodContext } from '@/contexts/FoodContext';
 
 interface WeeklyCalendarProps {}
 
+interface DayMenu {
+  breakfast: string;
+  lunch: string;
+  snacks: string;
+  dinner: string;
+}
+
 const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
+  const { foodItems } = useFoodContext();
   const [selectedWeek, setSelectedWeek] = useState(new Date());
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingDay, setEditingDay] = useState<string>('');
+  const [weeklyMenus, setWeeklyMenus] = useState<Record<string, DayMenu>>({});
+
+  // Separate food items by category
+  const breakfastItems = foodItems.filter(item => item.category.toLowerCase() === 'breakfast');
+  const lunchItems = foodItems.filter(item => item.category.toLowerCase() === 'lunch');
+  const snackItems = foodItems.filter(item => item.category.toLowerCase() === 'snacks');
+  const dinnerItems = foodItems.filter(item => item.category.toLowerCase() === 'dinner');
+
+  const [editMenu, setEditMenu] = useState<DayMenu>({
+    breakfast: '',
+    lunch: '',
+    snacks: '',
+    dinner: ''
+  });
 
   const getWeekDates = (date: Date) => {
     const week = [];
@@ -23,6 +51,49 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
   };
 
   const weekDates = getWeekDates(selectedWeek);
+
+  const handleEditMenu = (date: Date) => {
+    const dateKey = date.toDateString();
+    setEditingDay(dateKey);
+    
+    // Load existing menu or set defaults
+    const existingMenu = weeklyMenus[dateKey] || {
+      breakfast: breakfastItems[0]?.name || 'Dosa',
+      lunch: lunchItems[0]?.name || 'Rice',
+      snacks: snackItems[0]?.name || 'Tea',
+      dinner: dinnerItems[0]?.name || 'Chapati'
+    };
+    
+    setEditMenu(existingMenu);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveMenu = () => {
+    setWeeklyMenus(prev => ({
+      ...prev,
+      [editingDay]: editMenu
+    }));
+    
+    // Save to localStorage for sharing with student portal
+    const updatedMenus = {
+      ...weeklyMenus,
+      [editingDay]: editMenu
+    };
+    localStorage.setItem('weekly_menus', JSON.stringify(updatedMenus));
+    
+    setIsEditDialogOpen(false);
+    setEditingDay('');
+  };
+
+  const getDayMenu = (date: Date): DayMenu => {
+    const dateKey = date.toDateString();
+    return weeklyMenus[dateKey] || {
+      breakfast: 'Dosa, Coffee',
+      lunch: 'Rice, Sambar, Vegetables',
+      snacks: 'Tea, Biscuits',
+      dinner: 'Chapati, Dal, Curry'
+    };
+  };
 
   return (
     <div className="space-y-6">
@@ -40,6 +111,7 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
         {weekDates.map((date, index) => {
           const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
           const isToday = date.toDateString() === new Date().toDateString();
+          const dayMenu = getDayMenu(date);
           
           return (
             <Card key={index} className={`${isToday ? 'ring-2 ring-orange-500' : ''}`}>
@@ -56,28 +128,28 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm text-gray-700">Breakfast</h4>
                   <div className="text-sm text-gray-600 bg-yellow-50 p-2 rounded">
-                    Dosa, Coffee
+                    {dayMenu.breakfast}
                   </div>
                 </div>
                 
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm text-gray-700">Lunch</h4>
                   <div className="text-sm text-gray-600 bg-green-50 p-2 rounded">
-                    Rice, Sambar, Vegetables
+                    {dayMenu.lunch}
                   </div>
                 </div>
                 
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm text-gray-700">Snacks</h4>
                   <div className="text-sm text-gray-600 bg-purple-50 p-2 rounded">
-                    Tea, Biscuits
+                    {dayMenu.snacks}
                   </div>
                 </div>
                 
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm text-gray-700">Dinner</h4>
                   <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded">
-                    Chapati, Dal, Curry
+                    {dayMenu.dinner}
                   </div>
                 </div>
                 
@@ -85,6 +157,7 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
                   variant="outline" 
                   size="sm" 
                   className="w-full mt-3"
+                  onClick={() => handleEditMenu(date)}
                 >
                   Edit Menu
                 </Button>
@@ -93,6 +166,95 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
           );
         })}
       </div>
+
+      {/* Edit Menu Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Day Menu</DialogTitle>
+            <DialogDescription>
+              Select food items for each meal time.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="breakfast">Breakfast</Label>
+              <Select value={editMenu.breakfast} onValueChange={(value) => setEditMenu(prev => ({ ...prev, breakfast: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select breakfast item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {breakfastItems.map((item) => (
+                    <SelectItem key={item.id} value={item.name}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="Dosa, Coffee">Dosa, Coffee</SelectItem>
+                  <SelectItem value="Idli, Sambar">Idli, Sambar</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="lunch">Lunch</Label>
+              <Select value={editMenu.lunch} onValueChange={(value) => setEditMenu(prev => ({ ...prev, lunch: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select lunch item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {lunchItems.map((item) => (
+                    <SelectItem key={item.id} value={item.name}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="Rice, Sambar, Vegetables">Rice, Sambar, Vegetables</SelectItem>
+                  <SelectItem value="Rice, Dal, Curry">Rice, Dal, Curry</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="snacks">Snacks</Label>
+              <Select value={editMenu.snacks} onValueChange={(value) => setEditMenu(prev => ({ ...prev, snacks: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select snacks item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {snackItems.map((item) => (
+                    <SelectItem key={item.id} value={item.name}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="Tea, Biscuits">Tea, Biscuits</SelectItem>
+                  <SelectItem value="Tea, Samosa">Tea, Samosa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="dinner">Dinner</Label>
+              <Select value={editMenu.dinner} onValueChange={(value) => setEditMenu(prev => ({ ...prev, dinner: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select dinner item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dinnerItems.map((item) => (
+                    <SelectItem key={item.id} value={item.name}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="Chapati, Dal, Curry">Chapati, Dal, Curry</SelectItem>
+                  <SelectItem value="Chapati, Rajma, Rice">Chapati, Rajma, Rice</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button onClick={handleSaveMenu} className="w-full">
+              Save Menu
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

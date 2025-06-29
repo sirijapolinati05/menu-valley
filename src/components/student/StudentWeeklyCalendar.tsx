@@ -1,13 +1,29 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from 'lucide-react';
 
+interface DayMenu {
+  breakfast: string;
+  lunch: string;
+  snacks: string;
+  dinner: string;
+}
+
 const StudentWeeklyCalendar = () => {
   const [selectedWeek, setSelectedWeek] = useState(new Date());
   const [weeklyVotes, setWeeklyVotes] = useState<Record<string, boolean>>({});
+  const [weeklyMenus, setWeeklyMenus] = useState<Record<string, DayMenu>>({});
+
+  // Load weekly menus from localStorage (shared with management)
+  useEffect(() => {
+    const savedMenus = localStorage.getItem('weekly_menus');
+    if (savedMenus) {
+      setWeeklyMenus(JSON.parse(savedMenus));
+    }
+  }, []);
 
   const getWeekDates = (date: Date) => {
     const week = [];
@@ -27,6 +43,16 @@ const StudentWeeklyCalendar = () => {
       ...prev,
       [dateKey]: true
     }));
+  };
+
+  const getDayMenu = (date: Date): DayMenu => {
+    const dateKey = date.toDateString();
+    return weeklyMenus[dateKey] || {
+      breakfast: 'Idli, Sambar, Chutney',
+      lunch: 'Rice, Dal, Vegetable Curry',
+      snacks: 'Tea, Samosa',
+      dinner: 'Chapati, Rajma, Rice'
+    };
   };
 
   const weekDates = getWeekDates(selectedWeek);
@@ -57,6 +83,7 @@ const StudentWeeklyCalendar = () => {
           const isToday = date.toDateString() === new Date().toDateString();
           const isPast = date < new Date() && !isToday;
           const hasVoted = weeklyVotes[dateKey];
+          const dayMenu = getDayMenu(date);
           
           return (
             <Card 
@@ -77,28 +104,28 @@ const StudentWeeklyCalendar = () => {
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm text-gray-700">Breakfast</h4>
                   <div className="text-sm text-gray-600 bg-yellow-50 p-2 rounded">
-                    Idli, Sambar, Chutney
+                    {dayMenu.breakfast}
                   </div>
                 </div>
                 
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm text-gray-700">Lunch</h4>
                   <div className="text-sm text-gray-600 bg-green-50 p-2 rounded">
-                    Rice, Dal, Vegetable Curry
+                    {dayMenu.lunch}
                   </div>
                 </div>
                 
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm text-gray-700">Snacks</h4>
                   <div className="text-sm text-gray-600 bg-purple-50 p-2 rounded">
-                    Tea, Samosa
+                    {dayMenu.snacks}
                   </div>
                 </div>
                 
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm text-gray-700">Dinner</h4>
                   <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded">
-                    Chapati, Rajma, Rice
+                    {dayMenu.dinner}
                   </div>
                 </div>
                 
