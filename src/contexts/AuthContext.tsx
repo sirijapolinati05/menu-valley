@@ -55,11 +55,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     localStorage.setItem('hostel_user', JSON.stringify(userInfo));
     
-    // Create a mock user for demonstration
+    // Create a mock user for demonstration with all required User properties
     const mockUser = {
       id: `${userType}_${Date.now()}`,
+      aud: 'authenticated',
+      role: 'authenticated',
       email,
-      user_metadata: { role: userType }
+      email_confirmed_at: new Date().toISOString(),
+      phone: '',
+      confirmed_at: new Date().toISOString(),
+      last_sign_in_at: new Date().toISOString(),
+      app_metadata: {},
+      user_metadata: { role: userType },
+      identities: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     } as User;
     
     setUser(mockUser);
