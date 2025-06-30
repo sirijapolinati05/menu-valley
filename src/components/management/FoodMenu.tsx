@@ -60,7 +60,6 @@ const FoodMenu = () => {
   const handleAddFood = () => {
     if (newFoodName && newFoodCategory) {
       addFoodItem({
-        id: crypto.randomUUID(),
         name: newFoodName,
         category: newFoodCategory, // Single category for add
         description: newFoodDescription,
@@ -88,7 +87,7 @@ const FoodMenu = () => {
     if (editingItem && editFoodName && editFoodCategory.length > 0) {
       updateFoodItem(editingItem.id, {
         name: editFoodName,
-        category: editFoodCategory, // Array of categories
+        category: editFoodCategory.length === 1 ? editFoodCategory[0] : editFoodCategory, // Convert to string if single category
         description: editFoodDescription,
         image: editFoodImage || '/placeholder.svg'
       });
@@ -103,13 +102,13 @@ const FoodMenu = () => {
 
   // Custom styles for react-select
   const customStyles = {
-    control: (provided) => ({
+    control: (provided: any) => ({
       ...provided,
       borderColor: '#e2e8f0',
       borderRadius: '0.375rem',
       padding: '0.25rem'
     }),
-    menu: (provided) => ({
+    menu: (provided: any) => ({
       ...provided,
       zIndex: 9999
     })
@@ -259,7 +258,7 @@ const FoodMenu = () => {
                 isMulti
                 options={categoryOptions}
                 value={categoryOptions.filter(option => editFoodCategory.includes(option.value))}
-                onChange={(selected) => setEditFoodCategory(selected.map(option => option.value))}
+                onChange={(selected) => setEditFoodCategory(selected?.map(option => option.value) || [])}
                 placeholder="Select categories"
                 styles={customStyles}
               />

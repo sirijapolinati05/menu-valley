@@ -1,20 +1,27 @@
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Calendar } from 'lucide-react';
 import { useFoodContext } from '@/contexts/FoodContext';
+import Select from 'react-select';
 
 interface WeeklyCalendarProps {}
 
+interface FoodItem {
+  id: string;
+  name: string;
+  category: string | string[];
+  image?: string;
+}
+
 interface DayMenu {
-  breakfast: string;
-  lunch: string;
-  snacks: string;
-  dinner: string;
+  breakfast: string[];
+  lunch: string[];
+  snacks: string[];
+  dinner: string[];
 }
 
 const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
@@ -23,55 +30,134 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingDay, setEditingDay] = useState<string>('');
   const [weeklyMenus, setWeeklyMenus] = useState<Record<string, DayMenu>>({});
+  const [lastUpdate, setLastUpdate] = useState<string | null>(null);
 
-  // Load weekly menus from localStorage on component mount
+  // Initialize weeklyMenus from localStorage on mount
   useEffect(() => {
-    const savedMenus = localStorage.getItem('weekly_menus');
-    if (savedMenus) {
-      setWeeklyMenus(JSON.parse(savedMenus));
+    try {
+      const savedMenus = localStorage.getItem('weekly_menus');
+      if (savedMenus) {
+        const parsedMenus = JSON.parse(savedMenus);
+        // Ensure parsedMenus is an object
+        if (parsedMenus && typeof parsedMenus === 'object') {
+          setWeeklyMenus(parsedMenus);
+        }
+      }
+      const savedLastUpdate = localStorage.getItem('last_calendar_update');
+      if (savedLastUpdate) {
+        setLastUpdate(savedLastUpdate);
+      }
+    } catch (error) {
+      console.error('Error parsing weekly_menus from localStorage:', error);
     }
   }, []);
 
-  // Separate food items by category
-  const breakfastItems = foodItems.filter(item => item.category.toLowerCase() === 'breakfast');
-  const lunchItems = foodItems.filter(item => item.category.toLowerCase() === 'lunch');
-  const snackItems = foodItems.filter(item => item.category.toLowerCase() === 'snacks');
-  const dinnerItems = foodItems.filter(item => item.category.toLowerCase() === 'dinner');
+  // Update localStorage whenever weeklyMenus changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('weekly_menus', JSON.stringify(weeklyMenus));
+    } catch (error) {
+      console.error('Error saving weekly_menus to localStorage:', error);
+    }
+  }, [weeklyMenus]);
+
+  // Handle daily updates (remove past days, add new day)
+  useEffect(() => {
+    const checkUpdate = () => {
+      const now = new Date();
+      const today = now.toDateString();
+      const lastUpdateDate = lastUpdate ? new Date(lastUpdate).toDateString() : null;
+
+      if (now.getHours() >= 0 && lastUpdateDate !== today) {
+        const newMenus = { ...weeklyMenus };
+        
+        // Remove past days
+        Object.keys(newMenus).forEach(dateKey => {
+          const menuDate = new Date(dateKey);
+          if (menuDate < new Date(today)) {
+            delete newMenus[dateKey];
+          }
+        });
+
+        // Add new day (7th day from today)
+        const newDay = new Date(now);
+        newDay.setDate(newDay.getDate() + 6);
+        const newDayKey = newDay.toDateString();
+        if (!newMenus[newDayKey]) {
+          newMenus[newDayKey] = {
+            breakfast: [],
+            lunch: [],
+            snacks: [],
+            dinner: []
+          };
+        }
+
+        setWeeklyMenus(newMenus);
+        localStorage.setItem('weekly_menus', JSON.stringify(newMenus));
+        localStorage.setItem('last_calendar_update', now.toISOString());
+        setLastUpdate(now.toISOString());
+        setSelectedWeek(new Date(today));
+      }
+    };
+
+    checkUpdate();
+    const interval = setInterval(checkUpdate, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [weeklyMenus, lastUpdate]);
+
+  const breakfastItems = foodItems.filter((item: FoodItem) =>
+    Array.isArray(item.category)
+      ? item.category.map(c => c.toLowerCase()).includes('breakfast')
+      : item.category.toLowerCase() === 'breakfast'
+  );
+  const lunchItems = foodItems.filter((item: FoodItem) =>
+    Array.isArray(item.category)
+      ? item.category.map(c => c.toLowerCase()).includes('lunch')
+      : item.category.toLowerCase() === 'lunch'
+  );
+  const snackItems = foodItems.filter((item: FoodItem) =>
+    Array.isArray(item.category)
+      ? item.category.map(c => c.toLowerCase()).includes('snacks')
+      : item.category.toLowerCase() === 'snacks'
+  );
+  const dinnerItems = foodItems.filter((item: FoodItem) =>
+    Array.isArray(item.category)
+      ? item.category.map(c => c.toLowerCase()).includes('dinner')
+      : item.category.toLowerCase() === 'dinner'
+  );
 
   const [editMenu, setEditMenu] = useState<DayMenu>({
-    breakfast: '',
-    lunch: '',
-    snacks: '',
-    dinner: ''
+    breakfast: [],
+    lunch: [],
+    snacks: [],
+    dinner: []
   });
 
   const getWeekDates = (date: Date) => {
     const week = [];
     const startDate = new Date(date);
-    const day = startDate.getDay();
-    const diff = startDate.getDate() - day;
     
+    // Start from today
+    startDate.setHours(0, 0, 0, 0);
+    
+    // Generate 7 days starting from today
     for (let i = 0; i < 7; i++) {
-      const weekDate = new Date(startDate.setDate(diff + i));
+      const weekDate = new Date(startDate);
+      weekDate.setDate(startDate.getDate() + i);
       week.push(new Date(weekDate));
     }
     return week;
   };
 
-  const weekDates = getWeekDates(selectedWeek);
-
   const handleEditMenu = (date: Date) => {
     const dateKey = date.toDateString();
     setEditingDay(dateKey);
-    
-    // Load existing menu or set defaults
     const existingMenu = weeklyMenus[dateKey] || {
-      breakfast: breakfastItems[0]?.name || 'Dosa',
-      lunch: lunchItems[0]?.name || 'Rice',
-      snacks: snackItems[0]?.name || 'Tea',
-      dinner: dinnerItems[0]?.name || 'Chapati'
+      breakfast: [],
+      lunch: [],
+      snacks: [],
+      dinner: []
     };
-    
     setEditMenu(existingMenu);
     setIsEditDialogOpen(true);
   };
@@ -79,12 +165,10 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
   const handleSaveMenu = () => {
     const updatedMenus = {
       ...weeklyMenus,
-      [editingDay]: editMenu
+      [editingDay]: { ...editMenu }
     };
-    
+
     setWeeklyMenus(updatedMenus);
-    localStorage.setItem('weekly_menus', JSON.stringify(updatedMenus));
-    
     setIsEditDialogOpen(false);
     setEditingDay('');
   };
@@ -92,12 +176,37 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
   const getDayMenu = (date: Date): DayMenu => {
     const dateKey = date.toDateString();
     return weeklyMenus[dateKey] || {
-      breakfast: 'Dosa, Coffee',
-      lunch: 'Rice, Sambar, Vegetables',
-      snacks: 'Tea, Biscuits',
-      dinner: 'Chapati, Dal, Curry'
+      breakfast: [],
+      lunch: [],
+      snacks: [],
+      dinner: []
     };
   };
+
+  const breakfastOptions = breakfastItems.map((item: FoodItem) => ({ value: item.name, label: item.name }));
+  const lunchOptions = lunchItems.map((item: FoodItem) => ({ value: item.name, label: item.name }));
+  const snackOptions = snackItems.map((item: FoodItem) => ({ value: item.name, label: item.name }));
+  const dinnerOptions = dinnerItems.map((item: FoodItem) => ({ value: item.name, label: item.name }));
+
+  const customStyles = {
+    control: (provided: any) => ({
+      ...provided,
+      borderColor: '#e2e8f0',
+      borderRadius: '0.375rem',
+      padding: '0.25rem'
+    }),
+    multiValue: (provided: any) => ({
+      ...provided,
+      backgroundColor: '#f4f4f5'
+    })
+  };
+
+  const getFoodItemImage = (name: string, categoryItems: FoodItem[]): string | undefined => {
+    const item = categoryItems.find((item) => item.name === name);
+    return item?.image;
+  };
+
+  const weekDates = getWeekDates(selectedWeek);
 
   return (
     <div className="space-y-6">
@@ -116,7 +225,8 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
           const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
           const isToday = date.toDateString() === new Date().toDateString();
           const dayMenu = getDayMenu(date);
-          
+          const isEmpty = Object.values(dayMenu).every(meal => meal.length === 0);
+
           return (
             <Card key={index} className={`${isToday ? 'ring-2 ring-orange-500' : ''}`}>
               <CardHeader className="pb-3">
@@ -130,8 +240,8 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
                       {isToday && <span className="ml-2 text-orange-600 font-medium">(Today)</span>}
                     </CardDescription>
                   </div>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => handleEditMenu(date)}
                   >
@@ -140,123 +250,183 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-gray-700">Breakfast</h4>
-                    <div className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg">
-                      {dayMenu.breakfast}
+                {isEmpty ? (
+                  <div className="text-center py-8 text-gray-500">
+                    There is no food planned yet for this day
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm text-gray-700">Breakfast</h4>
+                      <div className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg">
+                        {dayMenu.breakfast.length > 0 ? (
+                          dayMenu.breakfast.map((item: string, idx: number) => (
+                            <div key={idx} className="flex items-center gap-2 mb-2">
+                              {getFoodItemImage(item, breakfastItems) ? (
+                                <img
+                                  src={getFoodItemImage(item, breakfastItems)}
+                                  alt={item}
+                                  className="w-12 h-12 object-cover rounded"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
+                                  No Image
+                                </div>
+                              )}
+                              <span>{item}</span>
+                            </div>
+                          ))
+                        ) : (
+                          'No items selected'
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm text-gray-700">Lunch</h4>
+                      <div className="text-sm text-gray-600 bg-green-50 p-3 rounded-lg">
+                        {dayMenu.lunch.length > 0 ? (
+                          dayMenu.lunch.map((item: string, idx: number) => (
+                            <div key={idx} className="flex items-center gap-2 mb-2">
+                              {getFoodItemImage(item, lunchItems) ? (
+                                <img
+                                  src={getFoodItemImage(item, lunchItems)}
+                                  alt={item}
+                                  className="w-12 h-12 object-cover rounded"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
+                                  No Image
+                                </div>
+                              )}
+                              <span>{item}</span>
+                            </div>
+                          ))
+                        ) : (
+                          'No items selected'
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm text-gray-700">Snacks</h4>
+                      <div className="text-sm text-gray-600 bg-purple-50 p-3 rounded-lg">
+                        {dayMenu.snacks.length > 0 ? (
+                          dayMenu.snacks.map((item: string, idx: number) => (
+                            <div key={idx} className="flex items-center gap-2 mb-2">
+                              {getFoodItemImage(item, snackItems) ? (
+                                <img
+                                  src={getFoodItemImage(item, snackItems)}
+                                  alt={item}
+                                  className="w-12 h-12 object-cover rounded"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
+                                  No Image
+                                </div>
+                              )}
+                              <span>{item}</span>
+                            </div>
+                          ))
+                        ) : (
+                          'No items selected'
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm text-gray-700">Dinner</h4>
+                      <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                        {dayMenu.dinner.length > 0 ? (
+                          dayMenu.dinner.map((item: string, idx: number) => (
+                            <div key={idx} className="flex items-center gap-2 mb-2">
+                              {getFoodItemImage(item, dinnerItems) ? (
+                                <img
+                                  src={getFoodItemImage(item, dinnerItems)}
+                                  alt={item}
+                                  className="w-12 h-12 object-cover rounded"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
+                                  No Image
+                                </div>
+                              )}
+                              <span>{item}</span>
+                            </div>
+                          ))
+                        ) : (
+                          'No items selected'
+                        )}
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-gray-700">Lunch</h4>
-                    <div className="text-sm text-gray-600 bg-green-50 p-3 rounded-lg">
-                      {dayMenu.lunch}
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-gray-700">Snacks</h4>
-                    <div className="text-sm text-gray-600 bg-purple-50 p-3 rounded-lg">
-                      {dayMenu.snacks}
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-gray-700">Dinner</h4>
-                    <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
-                      {dayMenu.dinner}
-                    </div>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      {/* Edit Menu Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Day Menu</DialogTitle>
-            <DialogDescription>
-              Select food items for each meal time.
-            </DialogDescription>
+            <DialogDescription>Select multiple food items for each meal time.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <Label htmlFor="breakfast">Breakfast</Label>
-              <Select value={editMenu.breakfast} onValueChange={(value) => setEditMenu(prev => ({ ...prev, breakfast: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select breakfast item" />
-                </SelectTrigger>
-                <SelectContent>
-                  {breakfastItems.map((item) => (
-                    <SelectItem key={item.id} value={item.name}>
-                      {item.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="Dosa, Coffee">Dosa, Coffee</SelectItem>
-                  <SelectItem value="Idli, Sambar">Idli, Sambar</SelectItem>
-                </SelectContent>
-              </Select>
+              <Select
+                isMulti
+                options={breakfastOptions}
+                value={breakfastOptions.filter(option => editMenu.breakfast.includes(option.value))}
+                onChange={(selected) => setEditMenu(prev => ({
+                  ...prev,
+                  breakfast: selected ? selected.map(item => item.value) : []
+                }))}
+                placeholder="Select breakfast items"
+                styles={customStyles}
+              />
             </div>
-
             <div>
               <Label htmlFor="lunch">Lunch</Label>
-              <Select value={editMenu.lunch} onValueChange={(value) => setEditMenu(prev => ({ ...prev, lunch: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select lunch item" />
-                </SelectTrigger>
-                <SelectContent>
-                  {lunchItems.map((item) => (
-                    <SelectItem key={item.id} value={item.name}>
-                      {item.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="Rice, Sambar, Vegetables">Rice, Sambar, Vegetables</SelectItem>
-                  <SelectItem value="Rice, Dal, Curry">Rice, Dal, Curry</SelectItem>
-                </SelectContent>
-              </Select>
+              <Select
+                isMulti
+                options={lunchOptions}
+                value={lunchOptions.filter(option => editMenu.lunch.includes(option.value))}
+                onChange={(selected) => setEditMenu(prev => ({
+                  ...prev,
+                  lunch: selected ? selected.map(item => item.value) : []
+                }))}
+                placeholder="Select lunch items"
+                styles={customStyles}
+              />
             </div>
-
             <div>
               <Label htmlFor="snacks">Snacks</Label>
-              <Select value={editMenu.snacks} onValueChange={(value) => setEditMenu(prev => ({ ...prev, snacks: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select snacks item" />
-                </SelectTrigger>
-                <SelectContent>
-                  {snackItems.map((item) => (
-                    <SelectItem key={item.id} value={item.name}>
-                      {item.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="Tea, Biscuits">Tea, Biscuits</SelectItem>
-                  <SelectItem value="Tea, Samosa">Tea, Samosa</SelectItem>
-                </SelectContent>
-              </Select>
+              <Select
+                isMulti
+                options={snackOptions}
+                value={snackOptions.filter(option => editMenu.snacks.includes(option.value))}
+                onChange={(selected) => setEditMenu(prev => ({
+                  ...prev,
+                  snacks: selected ? selected.map(item => item.value) : []
+                }))}
+                placeholder="Select snack items"
+                styles={customStyles}
+              />
             </div>
-
             <div>
               <Label htmlFor="dinner">Dinner</Label>
-              <Select value={editMenu.dinner} onValueChange={(value) => setEditMenu(prev => ({ ...prev, dinner: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select dinner item" />
-                </SelectTrigger>
-                <SelectContent>
-                  {dinnerItems.map((item) => (
-                    <SelectItem key={item.id} value={item.name}>
-                      {item.name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="Chapati, Dal, Curry">Chapati, Dal, Curry</SelectItem>
-                  <SelectItem value="Chapati, Rajma, Rice">Chapati, Rajma, Rice</SelectItem>
-                </SelectContent>
-              </Select>
+              <Select
+                isMulti
+                options={dinnerOptions}
+                value={dinnerOptions.filter(option => editMenu.dinner.includes(option.value))}
+                onChange={(selected) => setEditMenu(prev => ({
+                  ...prev,
+                  dinner: selected ? selected.map(item => item.value) : []
+                }))}
+                placeholder="Select dinner items"
+                styles={customStyles}
+              />
             </div>
-
             <Button onClick={handleSaveMenu} className="w-full">
               Save Menu
             </Button>

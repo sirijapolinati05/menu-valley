@@ -5,7 +5,7 @@ interface FoodItem {
   id: string;
   name: string;
   image?: string;
-  category: string;
+  category: string | string[];
   description?: string;
 }
 
