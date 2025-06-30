@@ -47,6 +47,26 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
           setWeeklyMenus(parsedMenus);
           console.log('Set weekly menus state:', parsedMenus);
         }
+      } else {
+        // Initialize with empty menus for the current week if no data exists
+        const today = new Date();
+        const initialMenus: Record<string, DayMenu> = {};
+        
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(today);
+          date.setDate(today.getDate() + i);
+          const dateKey = date.toDateString();
+          initialMenus[dateKey] = {
+            breakfast: [],
+            lunch: [],
+            snacks: [],
+            dinner: []
+          };
+        }
+        
+        setWeeklyMenus(initialMenus);
+        localStorage.setItem('weekly_menus', JSON.stringify(initialMenus));
+        console.log('Initialized empty menus:', initialMenus);
       }
       
       const savedLastUpdate = localStorage.getItem('last_calendar_update');
@@ -57,17 +77,6 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
       console.error('Error parsing weekly_menus from localStorage:', error);
     }
   }, []);
-
-  // Update localStorage whenever weeklyMenus changes
-  useEffect(() => {
-    console.log('Saving weekly menus to localStorage:', weeklyMenus);
-    try {
-      localStorage.setItem('weekly_menus', JSON.stringify(weeklyMenus));
-      console.log('Successfully saved to localStorage');
-    } catch (error) {
-      console.error('Error saving weekly_menus to localStorage:', error);
-    }
-  }, [weeklyMenus]);
 
   // Handle daily updates (remove past days, add new day)
   useEffect(() => {
@@ -117,9 +126,12 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
       }
     };
 
-    checkUpdate();
-    const interval = setInterval(checkUpdate, 60 * 1000);
-    return () => clearInterval(interval);
+    // Only run if weeklyMenus is not empty (after initial load)
+    if (Object.keys(weeklyMenus).length > 0) {
+      checkUpdate();
+      const interval = setInterval(checkUpdate, 60 * 1000);
+      return () => clearInterval(interval);
+    }
   }, [weeklyMenus, lastUpdate]);
 
   const breakfastItems = foodItems.filter((item: FoodItem) =>
@@ -197,8 +209,12 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
     setWeeklyMenus(updatedMenus);
     
     // Force save to localStorage immediately
-    localStorage.setItem('weekly_menus', JSON.stringify(updatedMenus));
-    console.log('Menu saved to localStorage');
+    try {
+      localStorage.setItem('weekly_menus', JSON.stringify(updatedMenus));
+      console.log('Menu saved to localStorage successfully');
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
     
     setIsEditDialogOpen(false);
     setEditingDay('');
