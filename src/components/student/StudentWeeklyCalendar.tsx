@@ -1,14 +1,13 @@
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { Calendar } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useFoodContext } from '@/contexts/FoodContext';
-import Select from 'react-select';
 
 interface FoodItem {
   id: string;
@@ -93,16 +92,17 @@ const StudentWeeklyCalendar = () => {
         const newMenus = { ...weeklyMenus };
         const newVotes = { ...weeklyVotes };
 
-        // Remove past days
+        // Remove past days (anything before today)
         Object.keys(newMenus).forEach(dateKey => {
           const menuDate = new Date(dateKey);
-          if (menuDate < new Date(today)) {
+          const todayDate = new Date(today);
+          if (menuDate < todayDate) {
             delete newMenus[dateKey];
             delete newVotes[dateKey];
           }
         });
 
-        // Add new day (7th day from today)
+        // Add new day (7th day from today) to maintain 7-day view
         const newDay = new Date(now);
         newDay.setDate(newDay.getDate() + 6);
         const newDayKey = newDay.toDateString();
@@ -151,29 +151,12 @@ const StudentWeeklyCalendar = () => {
       : item.category.toLowerCase() === 'dinner'
   );
 
-  const breakfastOptions = breakfastItems.map((item: FoodItem) => ({ value: item.name, label: item.name }));
-  const lunchOptions = lunchItems.map((item: FoodItem) => ({ value: item.name, label: item.name }));
-  const snackOptions = snackItems.map((item: FoodItem) => ({ value: item.name, label: item.name }));
-  const dinnerOptions = dinnerItems.map((item: FoodItem) => ({ value: item.name, label: item.name }));
-
-  const customStyles = {
-    control: (provided: any) => ({
-      ...provided,
-      borderColor: '#e2e8f0',
-      borderRadius: '0.375rem',
-      padding: '0.25rem'
-    }),
-    multiValue: (provided: any) => ({
-      ...provided,
-      backgroundColor: '#f4f4f5'
-    })
-  };
-
   const getWeekDates = (date: Date) => {
     const week = [];
     const startDate = new Date(date);
     startDate.setHours(0, 0, 0, 0);
     
+    // Generate 7 days starting from today
     for (let i = 0; i < 7; i++) {
       const weekDate = new Date(startDate);
       weekDate.setDate(startDate.getDate() + i);
@@ -200,7 +183,7 @@ const StudentWeeklyCalendar = () => {
   const handleVoteForDay = (dateKey: string) => {
     if (weeklyVotes[dateKey]) {
       toast({
-        title: "You have already cast your vote",
+        title: "You have already casted your vote",
         description: `You have already voted for ${dateKey}. You can only vote once per day.`,
         variant: "destructive"
       });
@@ -214,6 +197,15 @@ const StudentWeeklyCalendar = () => {
       dinner: weeklyVotes[dateKey]?.dinner || []
     });
     setIsVoteDialogOpen(true);
+  };
+
+  const handleItemSelect = (category: keyof VoteSelection, itemName: string, checked: boolean) => {
+    setSelectedItems(prev => ({
+      ...prev,
+      [category]: checked
+        ? [...prev[category], itemName]
+        : prev[category].filter(name => name !== itemName)
+    }));
   };
 
   const handleSubmitVote = () => {
@@ -261,10 +253,10 @@ const StudentWeeklyCalendar = () => {
         </div>
       </div>
 
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-        <h3 className="font-medium text-green-800 mb-2">Weekly Voting</h3>
-        <p className="text-sm text-green-700">
-          Vote for your preferred meals to help hostel management plan quantities and reduce food waste.
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <h3 className="font-medium text-blue-800 mb-2">Weekly Voting</h3>
+        <p className="text-sm text-blue-700">
+          You can vote for your interest in upcoming meals. This helps the hostel management plan better quantities and reduce food waste.
         </p>
       </div>
 
@@ -426,71 +418,60 @@ const StudentWeeklyCalendar = () => {
       </div>
 
       <Dialog open={isVoteDialogOpen} onOpenChange={setIsVoteDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Vote for {votingDay}</DialogTitle>
             <DialogDescription>Select the food items you are interested in for this day.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="breakfast">Breakfast</Label>
-              <Select
-                isMulti
-                options={breakfastOptions}
-                value={breakfastOptions.filter(option => selectedItems.breakfast.includes(option.value))}
-                onChange={(selected) => setSelectedItems(prev => ({
-                  ...prev,
-                  breakfast: selected ? selected.map(item => item.value) : []
-                }))}
-                placeholder="Select breakfast items"
-                styles={customStyles}
-              />
-            </div>
-            <div>
-              <Label htmlFor="lunch">Lunch</Label>
-              <Select
-                isMulti
-                options={lunchOptions}
-                value={lunchOptions.filter(option => selectedItems.lunch.includes(option.value))}
-                onChange={(selected) => setSelectedItems(prev => ({
-                  ...prev,
-                  lunch: selected ? selected.map(item => item.value) : []
-                }))}
-                placeholder="Select lunch items"
-                styles={customStyles}
-              />
-            </div>
-            <div>
-              <Label htmlFor="snacks">Snacks</Label>
-              <Select
-                isMulti
-                options={snackOptions}
-                value={snackOptions.filter(option => selectedItems.snacks.includes(option.value))}
-                onChange={(selected) => setSelectedItems(prev => ({
-                  ...prev,
-                  snacks: selected ? selected.map(item => item.value) : []
-                }))}
-                placeholder="Select snack items"
-                styles={customStyles}
-              />
-            </div>
-            <div>
-              <Label htmlFor="dinner">Dinner</Label>
-              <Select
-                isMulti
-                options={dinnerOptions}
-                value={dinnerOptions.filter(option => selectedItems.dinner.includes(option.value))}
-                onChange={(selected) => setSelectedItems(prev => ({
-                  ...prev,
-                  dinner: selected ? selected.map(item => item.value) : []
-                }))}
-                placeholder="Select dinner items"
-                styles={customStyles}
-              />
-            </div>
+            {['breakfast', 'lunch', 'snacks', 'dinner'].map(category => {
+              const categoryItems = {
+                breakfast: breakfastItems,
+                lunch: lunchItems,
+                snacks: snackItems,
+                dinner: dinnerItems
+              }[category as keyof DayMenu];
+              const selectedCategoryItems = selectedItems[category as keyof VoteSelection];
+
+              return (
+                <div key={category} className="space-y-2">
+                  <h4 className="font-medium text-sm text-gray-700 capitalize">{category}</h4>
+                  <div className="grid grid-cols-1 gap-2">
+                    {categoryItems.map((item: FoodItem) => (
+                      <div key={item.id} className="flex items-center gap-2">
+                        <Checkbox
+                          checked={selectedCategoryItems.includes(item.name)}
+                          onCheckedChange={(checked) => 
+                            handleItemSelect(category as keyof VoteSelection, item.name, checked as boolean)
+                          }
+                        />
+                        <span>{item.name}</span>
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-8 h-8 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
+                            No Image
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
             <Button 
               onClick={handleSubmitVote}
               className="w-full bg-green-600 hover:bg-green-700"
+              disabled={
+                selectedItems.breakfast.length === 0 &&
+                selectedItems.lunch.length === 0 &&
+                selectedItems.snacks.length === 0 &&
+                selectedItems.dinner.length === 0
+              }
             >
               Submit Vote
             </Button>
