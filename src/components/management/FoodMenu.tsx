@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Search, Edit, Upload } from 'lucide-react';
 import { useFoodContext } from '@/contexts/FoodContext';
+import Select from 'react-select';
 
 const FoodMenu = () => {
   const { foodItems, addFoodItem, updateFoodItem } = useFoodContext();
@@ -20,12 +21,21 @@ const FoodMenu = () => {
   const [newFoodName, setNewFoodName] = useState('');
   const [newFoodCategory, setNewFoodCategory] = useState('');
   const [newFoodDescription, setNewFoodDescription] = useState('');
-  
+  const [newFoodImage, setNewFoodImage] = useState('');
+
   // Form states for edit dialog
   const [editFoodName, setEditFoodName] = useState('');
-  const [editFoodCategory, setEditFoodCategory] = useState('');
+  const [editFoodCategory, setEditFoodCategory] = useState<string[]>([]); // Changed to array for multiple categories
   const [editFoodDescription, setEditFoodDescription] = useState('');
   const [editFoodImage, setEditFoodImage] = useState('');
+
+  // Category options for react-select
+  const categoryOptions = [
+    { value: 'Breakfast', label: 'Breakfast' },
+    { value: 'Lunch', label: 'Lunch' },
+    { value: 'Snacks', label: 'Snacks' },
+    { value: 'Dinner', label: 'Dinner' }
+  ];
 
   const filteredItems = foodItems.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -36,8 +46,11 @@ const FoodMenu = () => {
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
+        const imageDataUrl = e.target?.result as string;
         if (isEdit) {
-          setEditFoodImage(e.target?.result as string);
+          setEditFoodImage(imageDataUrl);
+        } else {
+          setNewFoodImage(imageDataUrl);
         }
       };
       reader.readAsDataURL(file);
@@ -47,14 +60,16 @@ const FoodMenu = () => {
   const handleAddFood = () => {
     if (newFoodName && newFoodCategory) {
       addFoodItem({
+        id: crypto.randomUUID(),
         name: newFoodName,
-        category: newFoodCategory,
+        category: newFoodCategory, // Single category for add
         description: newFoodDescription,
-        image: '/placeholder.svg'
+        image: newFoodImage || '/placeholder.svg'
       });
       setNewFoodName('');
       setNewFoodCategory('');
       setNewFoodDescription('');
+      setNewFoodImage('');
       setIsAddDialogOpen(false);
     }
   };
@@ -62,27 +77,42 @@ const FoodMenu = () => {
   const handleEditClick = (item: any) => {
     setEditingItem(item);
     setEditFoodName(item.name);
-    setEditFoodCategory(item.category);
+    // Convert single category or array of categories to array
+    setEditFoodCategory(Array.isArray(item.category) ? item.category : [item.category]);
     setEditFoodDescription(item.description || '');
     setEditFoodImage(item.image || '/placeholder.svg');
     setIsEditDialogOpen(true);
   };
 
   const handleUpdateFood = () => {
-    if (editingItem && editFoodName && editFoodCategory) {
+    if (editingItem && editFoodName && editFoodCategory.length > 0) {
       updateFoodItem(editingItem.id, {
         name: editFoodName,
-        category: editFoodCategory,
+        category: editFoodCategory, // Array of categories
         description: editFoodDescription,
         image: editFoodImage || '/placeholder.svg'
       });
       setIsEditDialogOpen(false);
       setEditingItem(null);
       setEditFoodName('');
-      setEditFoodCategory('');
+      setEditFoodCategory([]);
       setEditFoodDescription('');
       setEditFoodImage('');
     }
+  };
+
+  // Custom styles for react-select
+  const customStyles = {
+    control: (provided) => ({
+      ...provided,
+      borderColor: '#e2e8f0',
+      borderRadius: '0.375rem',
+      padding: '0.25rem'
+    }),
+    menu: (provided) => ({
+      ...provided,
+      zIndex: 9999
+    })
   };
 
   return (
@@ -112,11 +142,12 @@ const FoodMenu = () => {
               </div>
               <div>
                 <Label htmlFor="food-category">Category</Label>
-                <Input
-                  id="food-category"
-                  value={newFoodCategory}
-                  onChange={(e) => setNewFoodCategory(e.target.value)}
-                  placeholder="Breakfast, Lunch, Snacks, Dinner"
+                <Select
+                  options={categoryOptions}
+                  value={categoryOptions.find(option => option.value === newFoodCategory) || null}
+                  onChange={(selected) => setNewFoodCategory(selected?.value || '')}
+                  placeholder="Select category"
+                  styles={customStyles}
                 />
               </div>
               <div>
@@ -130,11 +161,25 @@ const FoodMenu = () => {
               </div>
               <div>
                 <Label htmlFor="food-image">Upload Image</Label>
-                <Input
-                  id="food-image"
-                  type="file"
-                  accept="image/*"
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="food-image"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageUpload(e, false)}
+                    className="flex-1"
+                  />
+                  <Upload className="h-4 w-4 text-gray-400" />
+                </div>
+                {newFoodImage && (
+                  <div className="mt-2">
+                    <img
+                      src={newFoodImage}
+                      alt="Preview"
+                      className="w-full h-32 object-cover rounded-lg border"
+                    />
+                  </div>
+                )}
               </div>
               <Button onClick={handleAddFood} className="w-full">
                 Add Food Item
@@ -161,13 +206,13 @@ const FoodMenu = () => {
           <Card key={item.id} className="hover:shadow-lg transition-shadow">
             <CardHeader className="pb-3">
               <img
-                src={item.image}
+                src={item.image || '/placeholder.svg'}
                 alt={item.name}
                 className="w-full h-32 object-cover rounded-lg mb-2"
               />
               <CardTitle className="text-lg">{item.name}</CardTitle>
               <CardDescription className="text-sm text-orange-600">
-                {item.category}
+                {Array.isArray(item.category) ? item.category.join(', ') : item.category}
               </CardDescription>
               {item.description && (
                 <CardDescription className="text-xs text-gray-600 mt-1">
@@ -209,12 +254,14 @@ const FoodMenu = () => {
               />
             </div>
             <div>
-              <Label htmlFor="edit-food-category">Category</Label>
-              <Input
-                id="edit-food-category"
-                value={editFoodCategory}
-                onChange={(e) => setEditFoodCategory(e.target.value)}
-                placeholder="Breakfast, Lunch, Snacks, Dinner"
+              <Label htmlFor="edit-food-category">Categories</Label>
+              <Select
+                isMulti
+                options={categoryOptions}
+                value={categoryOptions.filter(option => editFoodCategory.includes(option.value))}
+                onChange={(selected) => setEditFoodCategory(selected.map(option => option.value))}
+                placeholder="Select categories"
+                styles={customStyles}
               />
             </div>
             <div>
