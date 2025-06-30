@@ -34,15 +34,21 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
 
   // Initialize weeklyMenus from localStorage on mount
   useEffect(() => {
+    console.log('Loading weekly menus from localStorage...');
     try {
       const savedMenus = localStorage.getItem('weekly_menus');
+      console.log('Saved menus from localStorage:', savedMenus);
+      
       if (savedMenus) {
         const parsedMenus = JSON.parse(savedMenus);
-        // Ensure parsedMenus is an object
+        console.log('Parsed menus:', parsedMenus);
+        
         if (parsedMenus && typeof parsedMenus === 'object') {
           setWeeklyMenus(parsedMenus);
+          console.log('Set weekly menus state:', parsedMenus);
         }
       }
+      
       const savedLastUpdate = localStorage.getItem('last_calendar_update');
       if (savedLastUpdate) {
         setLastUpdate(savedLastUpdate);
@@ -54,8 +60,10 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
 
   // Update localStorage whenever weeklyMenus changes
   useEffect(() => {
+    console.log('Saving weekly menus to localStorage:', weeklyMenus);
     try {
       localStorage.setItem('weekly_menus', JSON.stringify(weeklyMenus));
+      console.log('Successfully saved to localStorage');
     } catch (error) {
       console.error('Error saving weekly_menus to localStorage:', error);
     }
@@ -68,13 +76,18 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
       const today = now.toDateString();
       const lastUpdateDate = lastUpdate ? new Date(lastUpdate).toDateString() : null;
 
+      console.log('Checking daily update:', { today, lastUpdateDate });
+
       if (now.getHours() >= 0 && lastUpdateDate !== today) {
+        console.log('Performing daily update...');
+        
         const newMenus = { ...weeklyMenus };
         
         // Remove past days
         Object.keys(newMenus).forEach(dateKey => {
           const menuDate = new Date(dateKey);
           if (menuDate < new Date(today)) {
+            console.log('Removing past day:', dateKey);
             delete newMenus[dateKey];
           }
         });
@@ -83,7 +96,9 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
         const newDay = new Date(now);
         newDay.setDate(newDay.getDate() + 6);
         const newDayKey = newDay.toDateString();
+        
         if (!newMenus[newDayKey]) {
+          console.log('Adding new day:', newDayKey);
           newMenus[newDayKey] = {
             breakfast: [],
             lunch: [],
@@ -97,6 +112,8 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
         localStorage.setItem('last_calendar_update', now.toISOString());
         setLastUpdate(now.toISOString());
         setSelectedWeek(new Date(today));
+        
+        console.log('Daily update completed');
       }
     };
 
@@ -151,6 +168,8 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
 
   const handleEditMenu = (date: Date) => {
     const dateKey = date.toDateString();
+    console.log('Opening edit menu for:', dateKey);
+    
     setEditingDay(dateKey);
     const existingMenu = weeklyMenus[dateKey] || {
       breakfast: [],
@@ -158,29 +177,50 @@ const WeeklyCalendar = ({}: WeeklyCalendarProps) => {
       snacks: [],
       dinner: []
     };
+    
+    console.log('Existing menu for', dateKey, ':', existingMenu);
     setEditMenu(existingMenu);
     setIsEditDialogOpen(true);
   };
 
   const handleSaveMenu = () => {
+    console.log('Saving menu for:', editingDay);
+    console.log('Menu data:', editMenu);
+    
     const updatedMenus = {
       ...weeklyMenus,
       [editingDay]: { ...editMenu }
     };
 
+    console.log('Updated menus object:', updatedMenus);
+    
     setWeeklyMenus(updatedMenus);
+    
+    // Force save to localStorage immediately
+    localStorage.setItem('weekly_menus', JSON.stringify(updatedMenus));
+    console.log('Menu saved to localStorage');
+    
     setIsEditDialogOpen(false);
     setEditingDay('');
+    setEditMenu({
+      breakfast: [],
+      lunch: [],
+      snacks: [],
+      dinner: []
+    });
   };
 
   const getDayMenu = (date: Date): DayMenu => {
     const dateKey = date.toDateString();
-    return weeklyMenus[dateKey] || {
+    const menu = weeklyMenus[dateKey] || {
       breakfast: [],
       lunch: [],
       snacks: [],
       dinner: []
     };
+    
+    console.log('Getting menu for', dateKey, ':', menu);
+    return menu;
   };
 
   const breakfastOptions = breakfastItems.map((item: FoodItem) => ({ value: item.name, label: item.name }));
